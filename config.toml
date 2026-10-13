@@ -1,0 +1,176 @@
+seed = 42           # 全局随机数种子
+resume = true       # 是否从检查点恢复训练
+num_classes = 10    # 类别数量
+
+[model]             # 模型配置
+name = "macbert"    # 模型名称
+path = "models/macbert" # 模型路径（相对于项目根目录）
+hidden_size = 768   # 隐藏层维度
+dropout = 0.1       # dropout
+
+[data]              # 数据集配置
+dataset_path = "datasets/dataset.lance" # 数据集路径（相对于项目根目录）
+max_length = 512    # 输入Token最大长度
+
+[output]            # 输出配置
+output_path = "artifacts"   # 输出路径（相对于项目根目录）
+checkpoint_path = "artifacts/checkpoints"   # 检查点保存路径
+export_path = "artifacts/export"            # 模型导出路径
+log_path = "artifacts/logs" # 日志保存路径
+
+[peft]              # 微调配置
+method = "dora"     # 微调方法
+
+[peft.lora_config]  # LoRA 配置
+r = 8
+alpha = 16
+dropout = 0.05
+target_modules = ["query", "key", "value"]
+bias = "none"
+
+[train]                 # 训练参数
+weight_decay = 0.01     # 权重衰减
+warmup_ratio = 0.05     # 预热比例
+amp = true              # 自动混合精度（bf16）
+length_bucketing = true # 长度分桶采样：批内长度接近，压掉动态 padding 的算力浪费
+num_workers = 8         # 分词与数据增强的子进程数
+compile = true          # 是否启用torch.compile
+
+# 各训练阶段参数
+
+[train.mlm_pretrain]
+epochs = 3
+lr = 5e-5
+probability = 0.15
+batch_size = 32
+
+[train.clf_train]
+epochs = 5
+lr = 2e-5
+batch_size = 32
+
+[train.expert_train]
+epochs = 5
+lr = 1e-3
+batch_size = 32
+
+[train.router_train]
+epochs = 10
+lr = 1e-3
+batch_size = 64
+
+[train.joint_train]
+epochs = 3
+lr = 5e-4
+batch_size = 32
+
+[router]                # 路由器参数
+dim = 768               # 路由器隐藏层维度
+dropout = 0.1           # dropout
+
+[loss.defaults]         # 损失参数
+class_weights = "none"
+label_smoothing = 0.0
+focal_gamma = 2.0
+self_weight = 3.0
+other_weight = 1.0
+beta = 0.9999           # 类别平衡损失的 beta
+balance_weight = 0.01   # 类别平衡损失的权重
+
+# 专家参数
+
+[[experts]]
+index = 0
+id = "normal"
+name = "正常"
+pooling = "mean_max"
+hidden = 256
+layers = 2
+augment = []
+
+[[experts]]
+index = 1
+id = "advertising"
+name = "广告骚扰"
+pooling = "mean"
+hidden = 256
+layers = 1
+augment = ["emoji_replace"]
+augment_rate = 0.3      # 被增强的样本比例：先按该概率抽签，未抽中的样本原样进入训练
+
+[[experts]]
+index = 2
+id = "fake_shopping"
+name = "虚假购物"
+pooling = "cls_mean"
+hidden = 512
+layers = 3
+augment = ["random_space"]
+augment_rate = 0.2
+
+[[experts]]
+index = 3
+id = "brushing"
+name = "刷单"
+pooling = "attention"
+hidden = 256
+layers = 3
+heads = 1
+augment = []
+
+[[experts]]
+index = 4
+id = "impersonation_customer_service"
+name = "冒充客服"
+pooling = "attention"
+hidden = 512
+layers = 3
+heads = 4
+augment = []
+
+[[experts]]
+index = 5
+id = "impersonation_public_sec"
+name = "冒充公检法"
+pooling = "max"
+hidden = 384
+layers = 2
+augment = ["homoglyph"]
+augment_rate = 0.4
+
+[[experts]]
+index = 6
+id = "impersonation_acquaintances"
+name = "冒充领导熟人"
+pooling = "last_mean"
+hidden = 384
+layers = 2
+augment = []
+
+[[experts]]
+index = 7
+id = "investment"
+name = "投资理财"
+pooling = "median"
+hidden = 512
+layers = 2
+augment = []
+
+[[experts]]
+index = 8
+id = "loan_credit"
+name = "贷款征信"
+pooling = "min"
+hidden = 384
+layers = 2
+augment = []
+
+[[experts]]
+index = 9
+id = "relationship"
+name = "关系型"
+pooling = "max_attn"
+hidden = 512
+layers = 3
+heads = 1
+augment = []

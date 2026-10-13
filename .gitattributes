@@ -1,0 +1,21 @@
+* text=auto eol=lf
+
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+*.onnx binary
+*.pt binary
+*.pth binary
+*.ckpt binary
+*.safetensors binary
+*.npy binary
+*.npz binary
+*.parquet binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.pdf binary
+
+uv.lock linguist-generated=true
