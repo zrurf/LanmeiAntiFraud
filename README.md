@@ -82,9 +82,13 @@ service/                推理服务
 ├── tasks.py            任务队列
 └── api.py              FastAPI 应用
 scripts/export_model.py 模型导出
+Dockerfile              服务镜像（service/ + train/ 推理路径 + 模型资产）
+docker-compose.yml      服务编排（默认 CPU 版，GPU 版见文件内注释）
+requirements-service.txt 服务侧依赖清单（不含训练栈）
 tests/                  测试
 └── baseline/           基线 / 消融实验入口
 docs/tutorial/          环境与使用文档
+docs/Docker部署.md      Docker 部署、镜像构成与排障
 config.toml             项目配置
 ```
 
@@ -320,6 +324,25 @@ curl -s http://127.0.0.1:8000/api/v1/infer/$TICKET
 curl -s http://127.0.0.1:8000/api/v1/meta
 curl -s http://127.0.0.1:8000/api/v1/health
 ```
+
+### 6.5 Docker 部署
+
+服务与模型资产一起打进镜像，默认 CPU 版（任何机器可跑）；GPU 版换 torch wheel 索引即可：
+
+```bash
+docker build -t lanmei-antifraud:latest .                                # CPU 版
+docker run -d --name lanmei-antifraud -p 8000:8000 lanmei-antifraud:latest
+
+docker build --build-arg TORCH_INDEX=cu130 -t lanmei-antifraud:cu130 .   # GPU 版
+docker run -d --name lanmei-antifraud --gpus all -p 8000:8000 lanmei-antifraud:cu130
+
+docker compose up -d --build                                             # 或交给 compose
+```
+
+镜像内含 `artifacts/export/deploy`（前向导图 + eager 权重 + 元数据 + tokenizer）与 `models/macbert`
+（`Backbone.build_model()` 按 `predict_meta.json` 的相对路径建骨干，缺它直接报错）；依赖清单为
+`requirements-service.txt`，只含服务链路真正用到的包。健康检查按 `/api/v1/health` 的
+`model_loaded` 判定。完整说明见 [`docs/Docker部署.md`](docs/Docker部署.md)。
 
 ---
 

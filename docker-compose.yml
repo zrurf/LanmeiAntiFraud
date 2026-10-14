@@ -1,0 +1,30 @@
+services:
+  api:
+    build:
+      context: .
+      args:
+        TORCH_INDEX: cpu
+        # PIP_INDEX: https://pypi.tuna.tsinghua.edu.cn/simple
+    image: lanmei-antifraud:latest
+    container_name: lanmei-antifraud
+    # 让 uvicorn 能正常收到 SIGTERM 并作为 PID 1 收敛子进程
+    init: true
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      # 推理线程数，CPU 机型建议取核数附近
+      LMAF_WORKERS: 4
+      LMAF_TASK_TTL: 3600
+    # 挂载点须与 predict_meta.json 里的 model.path 对应
+    # volumes:
+    #   - ./artifacts/export/deploy:/app/artifacts/export/deploy:ro
+    #   - ./models/macbert:/app/models/macbert:ro
+    # GPU 版（镜像需以 TORCH_INDEX=cu130 构建）：
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
